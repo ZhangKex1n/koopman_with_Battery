@@ -163,7 +163,7 @@ class Block(nn.Module):
         return x
 
 
-class ViT(nn.Module):
+class ViT(nn.Module): #用于图像处理的变分自编码器网络
     def __init__(
             self,
             img_size=(720, 1440),
