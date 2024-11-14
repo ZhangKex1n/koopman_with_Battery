@@ -7,6 +7,27 @@ torch.manual_seed(0)
 
 # The structure of Auto-Encoder
 
+class encoder_mlp_norm(nn.Module):
+    def __init__(self, t_len, op_size):
+        super(encoder_mlp_norm, self).__init__()
+        self.layer = nn.Linear(t_len, op_size)
+        self.mean = nn.Parameter(torch.zeros(t_len))  # 存储均值
+        self.std = nn.Parameter(torch.ones(t_len))  # 存储标准差
+    def forward(self, x):
+        x = (x - self.mean) / self.std
+        x = self.layer(x)
+        return x
+
+class decoder_mlp_norm(nn.Module):
+    def __init__(self, t_len, op_size):
+        super(decoder_mlp_norm, self).__init__()
+        self.layer = nn.Linear(op_size, t_len)
+        self.mean = nn.Parameter(torch.zeros(t_len))  # 存储均值
+        self.std = nn.Parameter(torch.ones(t_len))    # 存储标准差
+    def forward(self, x):
+        x = self.layer(x)
+        x = x * self.std + self.mean
+        return x
 class encoder_test(nn.Module):
     def __init__(self, input_dim, hidden_dim, latent_dim):
         super(encoder_test, self).__init__()
@@ -121,7 +142,7 @@ class Koopman_Operator1D(nn.Module):
         self.op_size = op_size
         self.scale = (1 / (op_size * op_size))
         self.modes_x = modes_x
-        self.koopman_matrix = nn.Parameter(self.scale * torch.rand(t_len, op_size, 2, dtype=torch.cfloat))
+        self.koopman_matrix = nn.Parameter(self.scale * torch.rand(t_len, op_size, op_size, 2, dtype=torch.cfloat))
         #
         self.print_count = 0
     # Complex multiplication
@@ -138,14 +159,14 @@ class Koopman_Operator1D(nn.Module):
         # Fourier Transform
 
         x_ft = torch.fft.rfft(x) #傅里叶变换，x_ft是输入x的频域表示
-        #x_ft[5,70,65]
+        #x_ft[5,70,2]
         # Koopman Operator Time Marching
         out_ft = torch.zeros(x_ft.shape, dtype=torch.cfloat, device = x.device)
         #out_ft维度和x_ft一样
         #out_ft是一个初始化的与x_ft形状相同的零张量，用于存放time_marching(koopman算子推进)的频域数据
         out_ft[:, :, :self.modes_x] = self.time_marching(x_ft[:, :, :self.modes_x], self.koopman_matrix)
 
-        print("aa:",self.print_count)
+        #print("aa:",self.print_count)
         self.print_count += 1
         #只有频率中的低频模式被用来推进时间
         #Inverse Fourier Transform

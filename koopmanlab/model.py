@@ -29,6 +29,10 @@ class koopman:
             encoder = kno.encoder_mlp(self.t_in, self.operator_size)
             decoder = kno.decoder_mlp(self.t_in, self.operator_size)
             print("The autoencoder type is MLP.")
+        elif self.autoencoder == "MLP_norm":
+            encoder = kno.encoder_mlp_norm(self.t_in, self.operator_size)
+            decoder = kno.decoder_mlp_norm(self.t_in, self.operator_size)
+            print("The autoencoder type is MLP.")
         elif self.autoencoder == "test":
             encoder = kno.encoder_test(input_dim =2 , hidden_dim = 64, latent_dim = 128)
             decoder = kno.decoder_test(latent_dim = 128, hidden_dim = 64, output_dim = 2)
@@ -169,22 +173,25 @@ class koopman:
                     im,im_re = self.kernel(xx) #是kno里的x和x_reconstruct，im是经过decompose步koopman演化的值，im_re是仅经过编码器和解码器的输入
                     l_recons += self.loss_mse(im_re.reshape(bs, -1), xx.reshape(bs, -1))
                     if t == 0:
-                        pred = im[...,-1:]
+                        pred = im[...,-1:] #...表示保留前面所有的维度,意思是取im的
                     else:
                         pred = torch.cat((pred, im[...,-1:]), -1)
                     
                     xx = torch.cat((xx[..., step:], im[...,-1:]), dim=-1)
-                
-                l_pred = self.loss_mse(pred.reshape(bs, -1), yy.reshape(bs, -1))
+
+                w1= 0.99
+                w2 =0.01
+                weights = torch.tensor([w1, w2], device=xx.device)  # N为特征数量，可以根据实际情况设定权重
+                l_pred = torch.mean(weights * self.loss_mse(pred, yy), dim=-1)  # 加权计算损失
+
+                #l_pred = self.loss_mse(pred.reshape(bs, -1), yy.reshape(bs, -1))
                 #print("l_pred & l_recons",l_pred,l_recons)
-                loss = 5 * l_pred + 1.1 * l_recons
-                #print("losssss:",loss.item())
+                loss = 100 * l_pred + 1.1 * l_recons
                 train_pred_full += l_pred.item()
                 train_recons_full += l_recons.item()/T_out
-                #print("losssss:", loss.item())
 
                 self.optimizer.zero_grad()
-                loss.backward()
+                loss.backward() #损失函数调用
                 self.optimizer.step()
             train_pred_full = train_pred_full / len(trainloader)
             train_recons_full = train_recons_full / len(trainloader)

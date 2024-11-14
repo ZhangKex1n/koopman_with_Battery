@@ -188,7 +188,7 @@ def navier_stokes_single(path, batch_size = 64, T_in = 10, T_out = 40, type = "1
     return train_loader, test_loader
 
 
-def prepare_battery_data(batch_size=20, T_in=10, T_out=20, sub=1):
+def prepare_battery_data(batch_size=20, T_in=70, T_out=30, sub=1):
     # 准备训练和测试数据
     ntrain = 10
     ntest = 2
@@ -197,7 +197,7 @@ def prepare_battery_data(batch_size=20, T_in=10, T_out=20, sub=1):
     # 从放电数据中提取电压和电流
     file_path = r'C:\Users\Crisy\Desktop\Matlab_Common_PredictionModel\B0038.mat'
     discharge_data = load_battery_data(file_path)
-    voltage_data = discharge_data['24']['Voltage_load'][:total]
+    voltage_data = discharge_data['24']['Voltage_measured'][:total]
     current_data = discharge_data['24']['Current_load'][:total]
 
     # 创建输入数据 (电压和电流) 和输出数据 (预测未来的电压和电流)
