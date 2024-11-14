@@ -116,12 +116,12 @@ class decoder_conv2d(nn.Module):
 
 # Koopman 1D structure
 class Koopman_Operator1D(nn.Module):
-    def __init__(self, op_size, modes_x = 16,t_len = 70):
+    def __init__(self, op_size, modes_x = 16,t_len = 32):
         super(Koopman_Operator1D, self).__init__()
         self.op_size = op_size
         self.scale = (1 / (op_size * op_size))
         self.modes_x = modes_x
-        self.koopman_matrix = nn.Parameter(self.scale * torch.rand(t_len, op_size, 16, dtype=torch.cfloat))
+        self.koopman_matrix = nn.Parameter(self.scale * torch.rand(t_len, op_size, 2, dtype=torch.cfloat))
         #
         self.print_count = 0
     # Complex multiplication
@@ -162,7 +162,7 @@ class KNO1d(nn.Module):
         self.enc = encoder
         self.dec = decoder
         self.koopman_layer = Koopman_Operator1D(self.op_size, modes_x = modes_x)
-        #self.w0 = nn.Conv1d(op_size, op_size, 1) #高频补充量
+        self.w0 = nn.Conv1d(op_size, op_size, 1) #高频补充量
         self.lstm = nn.LSTM(input_size=op_size, hidden_size=op_size, num_layers=1, batch_first=True)
         self.linear_type = linear_type # If this variable is False, activate function will be worked after Koopman Matrix
         self.normalization = normalization
@@ -189,9 +189,9 @@ class KNO1d(nn.Module):
         #x_lstm, _ = self.lstm(x)
 
         if self.normalization:
-            x = torch.tanh(self.norm_layer(x)) #将高频补充量和koopman演化量加在一起
+            x = torch.tanh(self.w0(x_w) + x) #将高频补充量和koopman演化量加在一起
         else:
-            x = torch.tanh(x)
+            x = torch.tanh(self.w0(x_w) + x)
             #x = torch.tanh(x_lstm + x)
         x = x.permute(0, 2, 1)
         x = self.dec(x) # Decoder
